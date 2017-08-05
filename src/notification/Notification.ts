@@ -25,6 +25,12 @@ module Notification {
     export interface Notifier<E> {
         notify: (event: E) => Promise<string | void>
     }
+
+    export const noopNotifier = <E>() => ({
+        notify: (ignored: E) => {
+            return Promise.resolve();
+        }
+    });
 }
 
 export default Notification;

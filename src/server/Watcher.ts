@@ -1,57 +1,31 @@
 import * as Fs from "fs";
-import Notification from "../notification/Notification";
-import * as Path from "path";
-import * as Crypto from "crypto";
 import { isNoFileFound } from "../util/Error";
+import { Readable } from "stream";
 
-const OUT = process.stdout;
-const ERROR = process.stderr;
-
-// fixme use an URLMaker to create URL from relative paths.
-const HOSTNAME = "localhost";
-const PORT = 3000;
-
-export function start(dirToWatch: string,
-                      dirToExpose: string,
-                      notifier: Notification.Notifier<Notification.NewFileEvent>) {
-    try {
-        OUT.write(`👓  watching ${dirToWatch}\n`);
-        Fs.watch(dirToWatch, { recursive: true }, (eventType, fileName) => {
-            if (eventType === 'rename') {
-                exposeNewFile(`${dirToWatch}/${fileName}`, dirToExpose, notifier);
-            }
-        });
-    } catch (ex) {
-        ERROR.write(`unable to watch ${dirToWatch}!\n`);
-        if (isNoFileFound(ex)) {
-            ERROR.write("-- directory does not exists!");
-        }
-        process.exit(-1);
+export default class Watcher extends Readable {
+    public static watch(dirToWatch: string): Watcher {
+        return new Watcher(dirToWatch);
     }
-}
 
-function exposeNewFile(path: string,
-                       dirToExpose: string,
-                       notifier: Notification.Notifier<Notification.NewFileEvent>) {
-    const hash = hashFile(path);
-    const destination = `${dirToExpose}/${hash}`;
-    Fs.symlink(path, destination, () => {
-        notifyNewExposedFile(destination, dirToExpose, notifier);
-    })
-}
+    private constructor(private readonly dirToWatch: string) {
+        super();
+    }
 
-function hashFile(path: string): string {
-    return Crypto.createHash("md5")
-                 .update(path)
-                 .digest("hex");
-}
-
-function notifyNewExposedFile(path: string,
-                              dirToExpose: string,
-                              notifier: Notification.Notifier<Notification.NewFileEvent>) {
-    const relativePath = Path.relative(dirToExpose, path);
-    notifier.notify({
-        downloadURL: `http://${HOSTNAME}:${PORT}/${relativePath}`,
-        deleteURL: `http://${HOSTNAME}:${PORT}/${relativePath}/clean`
-    });
+    _read(size: number): void {
+        try {
+            Fs.watch(
+                this.dirToWatch,
+                { recursive: true },
+                (eventType, fileName) => {
+                    if (eventType === 'rename') {
+                        this.push(`${this.dirToWatch}/${fileName}`);
+                    }
+                }
+            );
+        } catch (ex) {
+            throw new Error(
+                `unable to watch ${this.dirToWatch}! ${isNoFileFound(ex) && "-- directory does not exists!"}`
+            );
+        }
+    }
 }

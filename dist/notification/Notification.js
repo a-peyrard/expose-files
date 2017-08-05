@@ -11,6 +11,11 @@ var Notification;
         };
     }
     Notification.compose = compose;
+    Notification.noopNotifier = () => ({
+        notify: (ignored) => {
+            return Promise.resolve();
+        }
+    });
 })(Notification || (Notification = {}));
 exports.default = Notification;
 //# sourceMappingURL=Notification.js.map

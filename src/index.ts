@@ -1,24 +1,31 @@
 #!/usr/bin/env node
 
-import * as Watcher from "./server/Watcher";
+import Watcher from "./server/Watcher";
 import { WritableStreamNewFileNotifier } from "./notification/console/ConsoleNotifier";
-import StaticFileServer from "./server/StaticFileServer";
+import { StaticFileServer } from "./server/StaticFileServer";
 
 const DIR_TO_WATCH = "/tmp/private";
 const DIR_TO_EXPOSE = "/tmp/public";
 const PORT = 3000;
 
-/*
-    ---- Start watcher to watch new file
- */
-Watcher.start(
-    DIR_TO_WATCH,
-    DIR_TO_EXPOSE,
-    WritableStreamNewFileNotifier.to(process.stdout)
-);
+const OUT = process.stdout;
 
+const start = new Date();
 /*
-    ---- Start express to expose files
+    ---- Start express to expose files, then start a watcher, and pipe it to server
  */
 StaticFileServer.serve(DIR_TO_EXPOSE)
-                .start(PORT);
+                .onNewFile(WritableStreamNewFileNotifier.to(process.stdout))
+                .start(PORT)
+                .then(server => {
+                    OUT.write(`👓  watching ${DIR_TO_WATCH}\n`);
+                    Watcher.watch(DIR_TO_WATCH)
+                           .pipe(server);
+                    OUT.write(
+                        `💻  server started on http://localhost:${server.port} in ${elapsedTime()}ms\n`
+                    );
+                });
+
+function elapsedTime() {
+    return new Date().getTime() - start.getTime();
+}
