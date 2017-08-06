@@ -26,7 +26,7 @@ StaticFileServer.serve(DIR_TO_EXPOSE)
                     Watcher.watch(DIR_TO_WATCH)
                            .pipe(server);
                     OUT.write(
-                        `💻  server started on http://localhost:${server.port} in ${elapsedTime()}ms\n`
+                        `💻  server started on ${server.address} in ${elapsedTime()}ms\n`
                     );
                 });
 

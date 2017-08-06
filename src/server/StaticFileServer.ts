@@ -6,15 +6,16 @@ import * as Crypto from "crypto";
 import { Writable } from "stream";
 import * as https from "https";
 import * as http from "http";
+import * as ipify from "ipify";
 
 const OUT = process.stdout;
-const HOSTNAME = "localhost";
 
 export module StaticFileServer {
     export interface Config {
         dirToExpose: string,
         notifier?: Notification.Notifier<Notification.NewFileEvent>,
-        ssl?: SSLConfig
+        ssl?: SSLConfig,
+        bindingName?: string
     }
 
     export interface SSLConfig {
@@ -43,6 +44,13 @@ export module StaticFileServer {
             });
         }
 
+        public bindTo(bindingName: string) {
+            return new ReadyToRun({
+                ...this.config,
+                bindingName
+            });
+        }
+
         public start(port = 3000): Promise<StaticFileServer.Running> {
             const { dirToExpose } = this.config;
 
@@ -65,9 +73,26 @@ export module StaticFileServer {
                 }
 
                 server.listen(port, () => {
-                    resolve(new Running(port, this.config, ssl));
+                    this.getPublicIp()
+                        .then((ip: string) => {
+                            resolve(new Running(ip, port, this.config, ssl));
+                        })
                 });
             })
+        }
+
+        getPublicIp(): Promise<string> {
+            let promise;
+            if (this.config.bindingName) {
+                promise = Promise.resolve(this.config.bindingName);
+            } else {
+                promise = ipify()
+                    .catch(() => {
+                        OUT.write("[WARNING] Unable to get public ip address, will use `127.0.0.1` in notification.");
+                        return "127.0.0.1";
+                    });
+            }
+            return promise;
         }
 
         handleClean(req: Express.Request, res: Express.Response) {
@@ -97,10 +122,13 @@ export module StaticFileServer {
 
 
     export class Running extends Writable {
-        constructor(public readonly port: number,
+        public readonly address: string;
+        constructor(private readonly ip: string,
+                    private readonly port: number,
                     private readonly config: StaticFileServer.Config,
                     private readonly ssl: boolean) {
-            super()
+            super();
+            this.address = `${ssl ? "https" : "http"}://${ip}:${port}`;
         }
 
         _write(chunk: any, encoding: string, done: (error?: Error) => void): void {
@@ -122,14 +150,11 @@ export module StaticFileServer {
 
         notifyNewExposedFile(relativePath: string) {
             const { notifier = Notification.noopNotifier() } = this.config;
+            const downloadURL = `${this.address}/${relativePath}`;
             return notifier.notify({
-                downloadURL: `${this.protocol()}://${HOSTNAME}:${this.port}/${relativePath}`,
-                deleteURL: `${this.protocol()}://${HOSTNAME}:${this.port}/${relativePath}/clean`
+                downloadURL,
+                deleteURL: `${downloadURL}/clean`
             });
-        }
-
-        protocol() {
-            return this.ssl ? "https" : "http";
         }
     }
 }

@@ -17,6 +17,7 @@
     "content-disposition": "^0.5.2",
     "express": "^4.15.3",
     "finalhandler": "^1.0.3",
+    "ipify": "^2.0.0",
     "nodemailer": "^4.0.1",
     "server-static": "^2.0.5"
   }

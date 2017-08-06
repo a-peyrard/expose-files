@@ -22,7 +22,7 @@ StaticFileServer_1.StaticFileServer.serve(DIR_TO_EXPOSE)
     OUT.write(`👓  watching ${DIR_TO_WATCH}\n`);
     Watcher_1.default.watch(DIR_TO_WATCH)
         .pipe(server);
-    OUT.write(`💻  server started on http://localhost:${server.port} in ${elapsedTime()}ms\n`);
+    OUT.write(`💻  server started on ${server.address} in ${elapsedTime()}ms\n`);
 });
 function elapsedTime() {
     return new Date().getTime() - start.getTime();

@@ -8,8 +8,8 @@ const Crypto = require("crypto");
 const stream_1 = require("stream");
 const https = require("https");
 const http = require("http");
+const ipify = require("ipify");
 const OUT = process.stdout;
-const HOSTNAME = "localhost";
 var StaticFileServer;
 (function (StaticFileServer) {
     StaticFileServer.serve = (dirToExpose) => {
@@ -24,6 +24,9 @@ var StaticFileServer;
         }
         useSSL(ssl) {
             return new ReadyToRun(Object.assign({}, this.config, { ssl }));
+        }
+        bindTo(bindingName) {
+            return new ReadyToRun(Object.assign({}, this.config, { bindingName }));
         }
         start(port = 3000) {
             const { dirToExpose } = this.config;
@@ -45,9 +48,26 @@ var StaticFileServer;
                     server = http.createServer(app);
                 }
                 server.listen(port, () => {
-                    resolve(new Running(port, this.config, ssl));
+                    this.getPublicIp()
+                        .then((ip) => {
+                        resolve(new Running(ip, port, this.config, ssl));
+                    });
                 });
             });
+        }
+        getPublicIp() {
+            let promise;
+            if (this.config.bindingName) {
+                promise = Promise.resolve(this.config.bindingName);
+            }
+            else {
+                promise = ipify()
+                    .catch(() => {
+                    OUT.write("[WARNING] Unable to get public ip address, will use `127.0.0.1` in notification.");
+                    return "127.0.0.1";
+                });
+            }
+            return promise;
         }
         handleClean(req, res) {
             const { dirToExpose } = this.config;
@@ -76,11 +96,13 @@ var StaticFileServer;
     }
     StaticFileServer.ReadyToRun = ReadyToRun;
     class Running extends stream_1.Writable {
-        constructor(port, config, ssl) {
+        constructor(ip, port, config, ssl) {
             super();
+            this.ip = ip;
             this.port = port;
             this.config = config;
             this.ssl = ssl;
+            this.address = `${ssl ? "https" : "http"}://${ip}:${port}`;
         }
         _write(chunk, encoding, done) {
             this.exposeFile(chunk);
@@ -94,13 +116,11 @@ var StaticFileServer;
         }
         notifyNewExposedFile(relativePath) {
             const { notifier = Notification_1.default.noopNotifier() } = this.config;
+            const downloadURL = `${this.address}/${relativePath}`;
             return notifier.notify({
-                downloadURL: `${this.protocol()}://${HOSTNAME}:${this.port}/${relativePath}`,
-                deleteURL: `${this.protocol()}://${HOSTNAME}:${this.port}/${relativePath}/clean`
+                downloadURL,
+                deleteURL: `${downloadURL}/clean`
             });
-        }
-        protocol() {
-            return this.ssl ? "https" : "http";
         }
     }
     StaticFileServer.Running = Running;
