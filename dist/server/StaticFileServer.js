@@ -6,6 +6,8 @@ const Error_1 = require("../util/Error");
 const Notification_1 = require("../notification/Notification");
 const Crypto = require("crypto");
 const stream_1 = require("stream");
+const https = require("https");
+const http = require("http");
 const OUT = process.stdout;
 const HOSTNAME = "localhost";
 var StaticFileServer;
@@ -20,14 +22,30 @@ var StaticFileServer;
         onNewFile(notifier) {
             return new ReadyToRun(Object.assign({}, this.config, { notifier }));
         }
+        useSSL(ssl) {
+            return new ReadyToRun(Object.assign({}, this.config, { ssl }));
+        }
         start(port = 3000) {
             const { dirToExpose } = this.config;
             return new Promise((resolve, ignored) => {
-                Express()
+                const app = Express()
                     .get("/:hash/clean", this.handleClean.bind(this))
-                    .use(Express.static(dirToExpose))
-                    .listen(port, () => {
-                    resolve(new Running(port, this.config));
+                    .use(Express.static(dirToExpose));
+                let server;
+                let ssl = false;
+                if (this.config.ssl) {
+                    const cert = Fs.readFileSync(this.config.ssl.cert);
+                    const key = Fs.readFileSync(this.config.ssl.key);
+                    server = https.createServer({ key, cert }, app);
+                    ssl = true;
+                }
+                else {
+                    OUT.write("[WARNING] no key nor cert specified, so fallback to HTTP, " +
+                        "exchanges will not be encrypted!\n");
+                    server = http.createServer(app);
+                }
+                server.listen(port, () => {
+                    resolve(new Running(port, this.config, ssl));
                 });
             });
         }
@@ -58,10 +76,11 @@ var StaticFileServer;
     }
     StaticFileServer.ReadyToRun = ReadyToRun;
     class Running extends stream_1.Writable {
-        constructor(port, config) {
+        constructor(port, config, ssl) {
             super();
             this.port = port;
             this.config = config;
+            this.ssl = ssl;
         }
         _write(chunk, encoding, done) {
             this.exposeFile(chunk);
@@ -76,9 +95,12 @@ var StaticFileServer;
         notifyNewExposedFile(relativePath) {
             const { notifier = Notification_1.default.noopNotifier() } = this.config;
             return notifier.notify({
-                downloadURL: `http://${HOSTNAME}:${this.port}/${relativePath}`,
-                deleteURL: `http://${HOSTNAME}:${this.port}/${relativePath}/clean`
+                downloadURL: `${this.protocol()}://${HOSTNAME}:${this.port}/${relativePath}`,
+                deleteURL: `${this.protocol()}://${HOSTNAME}:${this.port}/${relativePath}/clean`
             });
+        }
+        protocol() {
+            return this.ssl ? "https" : "http";
         }
     }
     StaticFileServer.Running = Running;

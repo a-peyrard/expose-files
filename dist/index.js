@@ -7,6 +7,8 @@ const StaticFileServer_1 = require("./server/StaticFileServer");
 const DIR_TO_WATCH = "/tmp/private";
 const DIR_TO_EXPOSE = "/tmp/public";
 const PORT = 3000;
+const CERT = "localhost.crt";
+const KEY = "localhost.key";
 const OUT = process.stdout;
 const start = new Date();
 /*
@@ -14,6 +16,7 @@ const start = new Date();
  */
 StaticFileServer_1.StaticFileServer.serve(DIR_TO_EXPOSE)
     .onNewFile(ConsoleNotifier_1.WritableStreamNewFileNotifier.to(process.stdout))
+    .useSSL({ cert: CERT, key: KEY })
     .start(PORT)
     .then(server => {
     OUT.write(`👓  watching ${DIR_TO_WATCH}\n`);

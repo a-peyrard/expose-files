@@ -4,6 +4,8 @@ import { isNoFileFound } from "../util/Error";
 import Notification from "../notification/Notification"
 import * as Crypto from "crypto";
 import { Writable } from "stream";
+import * as https from "https";
+import * as http from "http";
 
 const OUT = process.stdout;
 const HOSTNAME = "localhost";
@@ -11,7 +13,13 @@ const HOSTNAME = "localhost";
 export module StaticFileServer {
     export interface Config {
         dirToExpose: string,
-        notifier?: Notification.Notifier<Notification.NewFileEvent>
+        notifier?: Notification.Notifier<Notification.NewFileEvent>,
+        ssl?: SSLConfig
+    }
+
+    export interface SSLConfig {
+        cert: string,
+        key: string
     }
 
     export const serve = (dirToExpose: string): ReadyToRun => {
@@ -28,16 +36,37 @@ export module StaticFileServer {
             });
         }
 
+        public useSSL(ssl: SSLConfig) {
+            return new ReadyToRun({
+                ...this.config,
+                ssl
+            });
+        }
+
         public start(port = 3000): Promise<StaticFileServer.Running> {
             const { dirToExpose } = this.config;
 
             return new Promise((resolve, ignored) => {
-                Express()
+                const app = Express()
                     .get("/:hash/clean", this.handleClean.bind(this))
-                    .use(Express.static(dirToExpose))
-                    .listen(port, () => {
-                        resolve(new Running(port, this.config));
-                    });
+                    .use(Express.static(dirToExpose));
+
+                let server;
+                let ssl = false;
+                if (this.config.ssl) {
+                    const cert = Fs.readFileSync(this.config.ssl.cert);
+                    const key = Fs.readFileSync(this.config.ssl.key);
+                    server = https.createServer({ key, cert }, app);
+                    ssl = true;
+                } else {
+                    OUT.write("[WARNING] no key nor cert specified, so fallback to HTTP, " +
+                        "exchanges will not be encrypted!\n");
+                    server = http.createServer(app)
+                }
+
+                server.listen(port, () => {
+                    resolve(new Running(port, this.config, ssl));
+                });
             })
         }
 
@@ -69,7 +98,8 @@ export module StaticFileServer {
 
     export class Running extends Writable {
         constructor(public readonly port: number,
-                    private readonly config: StaticFileServer.Config) {
+                    private readonly config: StaticFileServer.Config,
+                    private readonly ssl: boolean) {
             super()
         }
 
@@ -93,9 +123,13 @@ export module StaticFileServer {
         notifyNewExposedFile(relativePath: string) {
             const { notifier = Notification.noopNotifier() } = this.config;
             return notifier.notify({
-                downloadURL: `http://${HOSTNAME}:${this.port}/${relativePath}`,
-                deleteURL: `http://${HOSTNAME}:${this.port}/${relativePath}/clean`
+                downloadURL: `${this.protocol()}://${HOSTNAME}:${this.port}/${relativePath}`,
+                deleteURL: `${this.protocol()}://${HOSTNAME}:${this.port}/${relativePath}/clean`
             });
+        }
+
+        protocol() {
+            return this.ssl ? "https" : "http";
         }
     }
 }

@@ -8,6 +8,9 @@ const DIR_TO_WATCH = "/tmp/private";
 const DIR_TO_EXPOSE = "/tmp/public";
 const PORT = 3000;
 
+const CERT = "localhost.crt";
+const KEY = "localhost.key";
+
 const OUT = process.stdout;
 
 const start = new Date();
@@ -16,6 +19,7 @@ const start = new Date();
  */
 StaticFileServer.serve(DIR_TO_EXPOSE)
                 .onNewFile(WritableStreamNewFileNotifier.to(process.stdout))
+                .useSSL({cert: CERT, key: KEY})
                 .start(PORT)
                 .then(server => {
                     OUT.write(`👓  watching ${DIR_TO_WATCH}\n`);
