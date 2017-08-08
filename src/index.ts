@@ -5,6 +5,9 @@ import { WritableStreamNewFileNotifier } from "./notification/console/ConsoleNot
 import { StaticFileServer } from "./server/StaticFileServer";
 import * as program from "Commander";
 import * as Colors from "colors";
+import Mailer from "./notification/mail/Mailer";
+import Notification from "./notification/Notification";
+import { MailNewFileNotifier } from "./notification/mail/MailNotifier";
 
 const OUT = process.stdout;
 
@@ -34,13 +37,20 @@ program
         "--bindTo <hostname>",
         "The hostname where to bind the server (will be used for URLs generation)"
     )
+    .option(
+        "--smtp <username:password>",
+        "The smtp server username and password (only Gmail smtp is supported)"
+    )
+    .option(
+        "--email <email>",
+        "The email to notify when a new file is exposed, this option required a smtp configuration"
+    )
     .action((pathToWatch: string, options: any) => {
         const start = new Date();
         /*
             ---- Start express to expose files, then start a watcher, and pipe it to server
          */
-        let staticFileServer = StaticFileServer.serve(options.exposeOut)
-                                               .onNewFile(WritableStreamNewFileNotifier.to(process.stdout));
+        let staticFileServer = StaticFileServer.serve(options.exposeOut);
 
         const sslOptions = extractSSLOptions(options.cert, options.key);
         if (sslOptions) {
@@ -49,6 +59,21 @@ program
         if (options.bindTo) {
             staticFileServer = staticFileServer.bindTo(options.bindTo);
         }
+
+        let notifier: Notification.Notifier<Notification.NewFileEvent> =
+            WritableStreamNewFileNotifier.to(process.stdout);
+        const mailOptions = extractMailOptions(options.smtp, options.email);
+        if (mailOptions) {
+            const [to, mailConfig] = mailOptions;
+            notifier = Notification.compose(
+                notifier,
+                MailNewFileNotifier.to(
+                    to,
+                    Mailer.withConfig(mailConfig)
+                )
+            )
+        }
+        staticFileServer = staticFileServer.onNewFile(notifier);
 
         staticFileServer
             .start(options.port)
@@ -70,6 +95,25 @@ function extractSSLOptions(cert: string | undefined, key: string | undefined): S
     }
     if (cert && !key || key && !cert) {
         OUT.write("[WARNING] to use ssl, both cert and key must be specified!\n");
+    }
+    return;
+}
+
+function extractMailOptions(smtp: string, to: string): [string, Mailer.Config] | void {
+    if (smtp && to) {
+        const [username, password] = smtp.split(":");
+        if (username && password) {
+            return [
+                to,
+                {
+                    username,
+                    password
+                }
+            ]
+        }
+    }
+    if (!smtp && to || !to && smtp) {
+        OUT.write("[WARNING] to enable mail notifications, both email and smtp options must be specified!\n");
     }
     return;
 }
