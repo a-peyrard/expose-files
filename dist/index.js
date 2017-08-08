@@ -24,6 +24,7 @@ program
     .option("--smtp <username:password>", "The smtp server username and password (only Gmail smtp is supported)")
     .option("--email <email>", "The email to notify when a new file is exposed, this option required a smtp configuration")
     .option("--config <config-file-path>", "The config file to read options from.")
+    .option("--filter <regex>", "A regex to filter files.")
     .parse(process.argv);
 /*
     --- main
@@ -57,10 +58,15 @@ staticFileServer
     .start(computedOptions.port || 3000)
     .then(server => {
     OUT.write(`👓  watching ${pathToWatch}\n`);
-    Watcher_1.default.watch(pathToWatch)
-        .pipe(server);
+    watcher(pathToWatch, computedOptions.filter).pipe(server);
     OUT.write(`💻  server started on ${server.address} in ${elapsedTimeSince(start)}ms\n`);
 });
+function watcher(pathToWatch, filter) {
+    if (filter) {
+        return Watcher_1.default.watchMatching(pathToWatch, new RegExp(filter));
+    }
+    return Watcher_1.default.watch(pathToWatch);
+}
 function extractOptions(clOptions) {
     if (clOptions.config) {
         try {

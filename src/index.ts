@@ -50,6 +50,10 @@ program
         "--config <config-file-path>",
         "The config file to read options from."
     )
+    .option(
+        "--filter <regex>",
+        "A regex to filter files."
+    )
     .parse(process.argv);
 
 /*
@@ -98,12 +102,21 @@ staticFileServer
     .start(computedOptions.port || 3000)
     .then(server => {
         OUT.write(`👓  watching ${pathToWatch}\n`);
-        Watcher.watch(pathToWatch)
-               .pipe(server);
+        watcher(pathToWatch, computedOptions.filter).pipe(server);
         OUT.write(
             `💻  server started on ${server.address} in ${elapsedTimeSince(start)}ms\n`
         );
     });
+
+function watcher(pathToWatch: string, filter?: any) {
+    if (filter) {
+        return Watcher.watchMatching(
+            pathToWatch,
+            new RegExp(filter)
+        );
+    }
+    return Watcher.watch(pathToWatch);
+}
 
 function extractOptions(clOptions: any): any {
     if (clOptions.config) {

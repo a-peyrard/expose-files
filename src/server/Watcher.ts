@@ -7,7 +7,12 @@ export default class Watcher extends Readable {
         return new Watcher(dirToWatch);
     }
 
-    private constructor(private readonly dirToWatch: string) {
+    public static watchMatching(dirToWatch: string, filter: RegExp): Watcher {
+        return new Watcher(dirToWatch, filter);
+    }
+
+    private constructor(private readonly dirToWatch: string,
+                        private readonly filter: RegExp = /.*/) {
         super();
     }
 
@@ -17,7 +22,7 @@ export default class Watcher extends Readable {
                 this.dirToWatch,
                 { recursive: true },
                 (eventType, fileName) => {
-                    if (eventType === 'rename') {
+                    if (eventType === 'rename' && this.filter.test(fileName)) {
                         this.push(`${this.dirToWatch}/${fileName}`);
                     }
                 }

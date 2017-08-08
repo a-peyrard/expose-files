@@ -4,17 +4,21 @@ const Fs = require("fs");
 const Error_1 = require("../util/Error");
 const stream_1 = require("stream");
 class Watcher extends stream_1.Readable {
-    constructor(dirToWatch) {
+    constructor(dirToWatch, filter = /.*/) {
         super();
         this.dirToWatch = dirToWatch;
+        this.filter = filter;
     }
     static watch(dirToWatch) {
         return new Watcher(dirToWatch);
     }
+    static watchMatching(dirToWatch, filter) {
+        return new Watcher(dirToWatch, filter);
+    }
     _read(size) {
         try {
             Fs.watch(this.dirToWatch, { recursive: true }, (eventType, fileName) => {
-                if (eventType === 'rename') {
+                if (eventType === 'rename' && this.filter.test(fileName)) {
                     this.push(`${this.dirToWatch}/${fileName}`);
                 }
             });
