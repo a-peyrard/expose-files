@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Watcher_1 = require("./server/Watcher");
 const ConsoleNotifier_1 = require("./notification/console/ConsoleNotifier");
 const StaticFileServer_1 = require("./server/StaticFileServer");
-const program = require("Commander");
+const program = require("commander");
 const Colors = require("colors");
 const Mailer_1 = require("./notification/mail/Mailer");
 const Notification_1 = require("./notification/Notification");

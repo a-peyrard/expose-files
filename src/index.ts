@@ -3,7 +3,7 @@
 import Watcher from "./server/Watcher";
 import { WritableStreamNewFileNotifier } from "./notification/console/ConsoleNotifier";
 import { StaticFileServer } from "./server/StaticFileServer";
-import * as program from "Commander";
+import * as program from "commander";
 import * as Colors from "colors";
 import Mailer from "./notification/mail/Mailer";
 import Notification from "./notification/Notification";
