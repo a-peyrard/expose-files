@@ -19,8 +19,7 @@ program
     .usage("[path-to-watch] [options]")
     .option(
         "--expose-out <path-to-expose>",
-        "The path where the exposed file will be linked.",
-        "/tmp"
+        "The path where the exposed file will be linked."
     )
     .option(
         "--port <port>",
@@ -73,7 +72,7 @@ if (!pathToWatch) {
 /*
     ---- Start express to expose files, then start a watcher, and pipe it to server
  */
-let staticFileServer = StaticFileServer.serve(computedOptions.exposeOut);
+let staticFileServer = StaticFileServer.serve(computedOptions.exposeOut || "/tmp");
 
 const sslOptions = extractSSLOptions(computedOptions.cert, computedOptions.key);
 if (sslOptions) {

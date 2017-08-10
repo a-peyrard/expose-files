@@ -16,7 +16,7 @@ program
     .version("0.0.1")
     .description("watch some directory and expose new files via web server")
     .usage("[path-to-watch] [options]")
-    .option("--expose-out <path-to-expose>", "The path where the exposed file will be linked.", "/tmp")
+    .option("--expose-out <path-to-expose>", "The path where the exposed file will be linked.")
     .option("--port <port>", "The port for the web server.")
     .option("--cert <cert-file-path>", "The path to the cert file (to use SSL, both cert and key must be defined)")
     .option("--key <key-file-path>", "The path to the cert file (to use SSL, both cert and key must be defined)")
@@ -39,7 +39,7 @@ if (!pathToWatch) {
 /*
     ---- Start express to expose files, then start a watcher, and pipe it to server
  */
-let staticFileServer = StaticFileServer_1.StaticFileServer.serve(computedOptions.exposeOut);
+let staticFileServer = StaticFileServer_1.StaticFileServer.serve(computedOptions.exposeOut || "/tmp");
 const sslOptions = extractSSLOptions(computedOptions.cert, computedOptions.key);
 if (sslOptions) {
     staticFileServer = staticFileServer.useSSL(sslOptions);

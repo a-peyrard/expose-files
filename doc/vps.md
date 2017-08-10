@@ -16,7 +16,7 @@ $ nano expose.config
 Here is an example of configuration file:
 ```
 watch=/tmp/private
-expose-out=/tmp/public
+exposeOut=/tmp/public
 port=8443
 cert=domain.crt
 key=domain.key
