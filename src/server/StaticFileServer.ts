@@ -8,6 +8,7 @@ import * as https from "https";
 import * as http from "http";
 import * as ipify from "ipify";
 import * as Path from "path";
+import { promisify } from "util";
 
 const OUT = process.stdout;
 
@@ -99,25 +100,21 @@ export module StaticFileServer {
         handleClean(req: Express.Request, res: Express.Response) {
             const { dirToExpose } = this.config;
 
-            const file = req.params.hash;
-            if (file) {
-                try {
-                    OUT.write(`-- 🌪  cleaning file ${file}\n`);
-                    const filePath = `${dirToExpose}/${file}`;
-                    Fs.unlinkSync(filePath);
-                    res.send(`🌪&nbsp;&nbsp;file ${file} successfully deleted!`);
-                } catch (ex) {
-                    if (isNoFileFound(ex)) {
-                        error404(res);
-                    } else {
-                        error500(ex, res);
-                    }
-                }
-                return;
+            const dirName = req.params.hash;
+            if (dirName) {
+                const dirPath = Path.resolve(dirToExpose, dirName);
+                OUT.write(`-- 🌪  cleaning directory ${dirName}\n`);
+                deleteDirectory(dirPath)
+                    .then(() => res.send(`🌪&nbsp;&nbsp;dir ${dirPath} successfully deleted!`))
+                    .catch(error => {
+                        console.error(error);
+                        if (isNoFileFound(error)) {
+                            error404(res);
+                        } else {
+                            error500(error, res);
+                        }
+                    });
             }
-            // can't reach this!
-            res.status(418);
-            res.send("☕&nbsp;&nbsp;Do you want some covfefe?");
         }
     }
 
@@ -141,21 +138,27 @@ export module StaticFileServer {
             const { dirToExpose } = this.config;
 
             const hash = hashFile(file);
-            const destination = `${dirToExpose}/${hash}`;
-            Fs.symlink(
-                file,
-                destination,
-                () => this.notifyNewExposedFile(Path.basename(file), hash)
-            )
+
+            const fileName = Path.basename(file);
+            const destinationDir = Path.resolve(dirToExpose, hash);
+            const linkPath = Path.resolve(destinationDir, fileName);
+
+            promisify(Fs.mkdir)(destinationDir)
+                .then(() => promisify(Fs.symlink)(file, linkPath))
+                .then(() => this.notifyNewExposedFile(fileName, Path.relative(dirToExpose, linkPath), hash))
+                .catch(error => {
+                    console.error("unable to manage " + file, error);
+                });
         }
 
-        notifyNewExposedFile(name: string, relativePath: string) {
+        notifyNewExposedFile(name: string, relativePath: string, hash: string) {
             const { notifier = Notification.noopNotifier() } = this.config;
             const downloadURL = `${this.address}/${relativePath}`;
+            const deleteURL = `${this.address}/${hash}/clean`;
             return notifier.notify({
                 name,
                 downloadURL,
-                deleteURL: `${downloadURL}/clean`
+                deleteURL
             });
         }
     }
@@ -175,4 +178,18 @@ function error404(res: Express.Response) {
 function error500(ex: Error, res: Express.Response) {
     res.status(500);
     res.send(`unknown error: ${ex}`);
+}
+
+/*
+    Note: this is not generic at all, this will just remove the directory, and the link inside it
+
+    It does not work recursively.
+ */
+function deleteDirectory(dir: string): Promise<void> {
+    const unlink = promisify(Fs.unlink);
+    return promisify(Fs.readdir)(dir)
+        .then(files => Promise.all(
+            files.map(f => unlink(Path.resolve(dir, f)))
+        ))
+        .then(() => promisify(Fs.rmdir)(dir))
 }
