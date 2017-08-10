@@ -12,7 +12,7 @@ export class MailNewFileNotifier implements Notification.Notifier<Notification.N
     notify(event: Notification.NewFileEvent): Promise<string | void> {
         return this.mailer.send({
             to: this.dest,
-            subject: "📬  New file available!",
+            subject: `📬  New file available: ${event.name}!`,
             text:
 `Hi,
 

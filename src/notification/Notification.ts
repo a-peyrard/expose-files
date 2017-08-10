@@ -1,5 +1,6 @@
 module Notification {
     export interface NewFileEvent {
+        name: string,
         downloadURL: string,
         deleteURL: string
     }

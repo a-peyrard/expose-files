@@ -11,7 +11,7 @@ class MailNewFileNotifier {
     notify(event) {
         return this.mailer.send({
             to: this.dest,
-            subject: "📬  New file available!",
+            subject: `📬  New file available: ${event.name}!`,
             text: `Hi,
 
 A new file is available for download: ${event.downloadURL}.

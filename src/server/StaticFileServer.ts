@@ -7,6 +7,7 @@ import { Writable } from "stream";
 import * as https from "https";
 import * as http from "http";
 import * as ipify from "ipify";
+import * as Path from "path";
 
 const OUT = process.stdout;
 
@@ -132,7 +133,7 @@ export module StaticFileServer {
         }
 
         _write(chunk: any, encoding: string, done: (error?: Error) => void): void {
-            this.exposeFile(chunk);
+            this.exposeFile(chunk.toString());
             done();
         }
 
@@ -144,14 +145,15 @@ export module StaticFileServer {
             Fs.symlink(
                 file,
                 destination,
-                () => this.notifyNewExposedFile(hash)
+                () => this.notifyNewExposedFile(Path.basename(file), hash)
             )
         }
 
-        notifyNewExposedFile(relativePath: string) {
+        notifyNewExposedFile(name: string, relativePath: string) {
             const { notifier = Notification.noopNotifier() } = this.config;
             const downloadURL = `${this.address}/${relativePath}`;
             return notifier.notify({
+                name,
                 downloadURL,
                 deleteURL: `${downloadURL}/clean`
             });

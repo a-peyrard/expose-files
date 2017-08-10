@@ -9,6 +9,7 @@ const stream_1 = require("stream");
 const https = require("https");
 const http = require("http");
 const ipify = require("ipify");
+const Path = require("path");
 const OUT = process.stdout;
 var StaticFileServer;
 (function (StaticFileServer) {
@@ -105,19 +106,20 @@ var StaticFileServer;
             this.address = `${ssl ? "https" : "http"}://${ip}:${port}`;
         }
         _write(chunk, encoding, done) {
-            this.exposeFile(chunk);
+            this.exposeFile(chunk.toString());
             done();
         }
         exposeFile(file) {
             const { dirToExpose } = this.config;
             const hash = hashFile(file);
             const destination = `${dirToExpose}/${hash}`;
-            Fs.symlink(file, destination, () => this.notifyNewExposedFile(hash));
+            Fs.symlink(file, destination, () => this.notifyNewExposedFile(Path.basename(file), hash));
         }
-        notifyNewExposedFile(relativePath) {
+        notifyNewExposedFile(name, relativePath) {
             const { notifier = Notification_1.default.noopNotifier() } = this.config;
             const downloadURL = `${this.address}/${relativePath}`;
             return notifier.notify({
+                name,
                 downloadURL,
                 deleteURL: `${downloadURL}/clean`
             });

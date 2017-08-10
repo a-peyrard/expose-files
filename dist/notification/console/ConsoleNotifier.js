@@ -8,7 +8,7 @@ class WritableStreamNewFileNotifier {
         return new WritableStreamNewFileNotifier(out);
     }
     notify(event) {
-        this.out.write(`-- 📬  New file ${event.downloadURL}
+        this.out.write(`-- 📬  New file ${event.name} @ ${event.downloadURL}
   (removable using: ${event.deleteURL} )\n`);
         return Promise.resolve();
     }

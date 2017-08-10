@@ -10,7 +10,7 @@ export class WritableStreamNewFileNotifier implements Notification.Notifier<Noti
 
     notify(event: Notification.NewFileEvent): Promise<string | void> {
         this.out.write(
-            `-- 📬  New file ${event.downloadURL}
+            `-- 📬  New file ${event.name} @ ${event.downloadURL}
   (removable using: ${event.deleteURL} )\n`
         );
         return Promise.resolve();
