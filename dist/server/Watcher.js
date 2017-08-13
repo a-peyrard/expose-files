@@ -4,6 +4,7 @@ const Fs = require("fs");
 const Error_1 = require("../util/Error");
 const stream_1 = require("stream");
 const Path = require("path");
+const util_1 = require("util");
 class Watcher extends stream_1.Readable {
     constructor(dirToWatch, filter = /.*/) {
         super();
@@ -20,8 +21,14 @@ class Watcher extends stream_1.Readable {
         try {
             Fs.watch(this.dirToWatch, { recursive: true }, (ignored, fileName) => {
                 if (this.filter.test(fileName)) {
-                    console.log(`${ignored} -- ${fileName} ${new Date().getTime()}`);
-                    this.push(Path.resolve(this.dirToWatch, fileName));
+                    const absoluteFile = Path.resolve(this.dirToWatch, fileName);
+                    util_1.promisify(Fs.stat)(absoluteFile)
+                        .then((stats) => {
+                        if (stats.isFile()) {
+                            this.push(absoluteFile);
+                        }
+                    })
+                        .catch(ignored => { });
                 }
             });
         }
