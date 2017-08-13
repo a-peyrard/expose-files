@@ -1,4 +1,5 @@
-# Expose files
+# Expose files [![Build Status](https://travis-ci.org/a-peyrard/expose-files.svg?branch=master)](https://travis-ci.org/a-peyrard/expose-files)
+
 
 > Small project to watch a directory and expose new created files via http(s?).
 
