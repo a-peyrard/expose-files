@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Fs = require("fs");
 const Error_1 = require("../util/Error");
 const stream_1 = require("stream");
+const Path = require("path");
 class Watcher extends stream_1.Readable {
     constructor(dirToWatch, filter = /.*/) {
         super();
@@ -17,9 +18,10 @@ class Watcher extends stream_1.Readable {
     }
     _read(size) {
         try {
-            Fs.watch(this.dirToWatch, { recursive: true }, (eventType, fileName) => {
-                if (eventType === 'rename' && this.filter.test(fileName)) {
-                    this.push(`${this.dirToWatch}/${fileName}`);
+            Fs.watch(this.dirToWatch, { recursive: true }, (ignored, fileName) => {
+                if (this.filter.test(fileName)) {
+                    console.log(`${ignored} -- ${fileName} ${new Date().getTime()}`);
+                    this.push(Path.resolve(this.dirToWatch, fileName));
                 }
             });
         }

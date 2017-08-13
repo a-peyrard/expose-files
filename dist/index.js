@@ -11,6 +11,7 @@ const Notification_1 = require("./notification/Notification");
 const MailNotifier_1 = require("./notification/mail/MailNotifier");
 const Fs = require("fs");
 const Error_1 = require("./util/Error");
+const Debouncer_1 = require("./util/Debouncer");
 const OUT = process.stdout;
 program
     .version("0.0.1")
@@ -25,6 +26,8 @@ program
     .option("--email <email>", "The email to notify when a new file is exposed, this option required a smtp configuration")
     .option("--config <config-file-path>", "The config file to read options from.")
     .option("--filter <regex>", "A regex to filter files.")
+    .option("--millis <delay-in-seconds>", "Debounce time (default is 30s). Setting a too low value might not be a good idea, " +
+    "if download is slow or filesystem is not issuing a lot of modification notifications")
     .parse(process.argv);
 /*
     --- main
@@ -58,7 +61,9 @@ staticFileServer
     .start(computedOptions.port || 3000)
     .then(server => {
     OUT.write(`👓  watching ${pathToWatch}\n`);
-    watcher(pathToWatch, computedOptions.filter).pipe(server);
+    watcher(pathToWatch, computedOptions.filter)
+        .pipe(Debouncer_1.default.seconds(computedOptions.debounced || 30), { end: false })
+        .pipe(server);
     OUT.write(`💻  server started on ${server.address} in ${elapsedTimeSince(start)}ms\n`);
 });
 function watcher(pathToWatch, filter) {

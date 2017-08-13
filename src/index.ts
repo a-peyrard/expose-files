@@ -10,6 +10,7 @@ import Notification from "./notification/Notification";
 import { MailNewFileNotifier } from "./notification/mail/MailNotifier";
 import * as Fs from "fs";
 import { isNoFileFound } from "./util/Error";
+import Debouncer from "./util/Debouncer";
 
 const OUT = process.stdout;
 
@@ -52,6 +53,11 @@ program
     .option(
         "--filter <regex>",
         "A regex to filter files."
+    )
+    .option(
+        "--millis <delay-in-seconds>",
+        "Debounce time (default is 30s). Setting a too low value might not be a good idea, " +
+        "if download is slow or filesystem is not issuing a lot of modification notifications"
     )
     .parse(process.argv);
 
@@ -101,7 +107,9 @@ staticFileServer
     .start(computedOptions.port || 3000)
     .then(server => {
         OUT.write(`👓  watching ${pathToWatch}\n`);
-        watcher(pathToWatch, computedOptions.filter).pipe(server);
+        watcher(pathToWatch, computedOptions.filter)
+            .pipe(Debouncer.seconds(computedOptions.debounced || 30), { end: false })
+            .pipe(server);
         OUT.write(
             `💻  server started on ${server.address} in ${elapsedTimeSince(start)}ms\n`
         );

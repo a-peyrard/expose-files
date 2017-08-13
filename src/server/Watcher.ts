@@ -1,6 +1,7 @@
 import * as Fs from "fs";
 import { isNoFileFound } from "../util/Error";
 import { Readable } from "stream";
+import * as Path from "path";
 
 export default class Watcher extends Readable {
     public static watch(dirToWatch: string): Watcher {
@@ -21,9 +22,10 @@ export default class Watcher extends Readable {
             Fs.watch(
                 this.dirToWatch,
                 { recursive: true },
-                (eventType, fileName) => {
-                    if (eventType === 'rename' && this.filter.test(fileName)) {
-                        this.push(`${this.dirToWatch}/${fileName}`);
+                (ignored, fileName) => {
+                    if (this.filter.test(fileName)) {
+                        console.log(`${ignored} -- ${fileName} ${new Date().getTime()}`);
+                        this.push(Path.resolve(this.dirToWatch, fileName));
                     }
                 }
             );
