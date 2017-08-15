@@ -2,7 +2,6 @@ import * as Fs from "fs";
 import { isNoFileFound } from "../util/Error";
 import { Readable } from "stream";
 import * as Path from "path";
-import { promisify } from "util";
 
 export default class Watcher extends Readable {
     public static watch(dirToWatch: string): Watcher {
@@ -25,14 +24,7 @@ export default class Watcher extends Readable {
                 { recursive: true },
                 (ignored, fileName) => {
                     if (this.filter.test(fileName)) {
-                        const absoluteFile = Path.resolve(this.dirToWatch, fileName);
-                        promisify(Fs.stat)(absoluteFile)
-                            .then((stats: Fs.Stats) => {
-                                if (stats.isFile()) {
-                                    this.push(absoluteFile);
-                                }
-                            })
-                            .catch(ignored => { /* just ignore event for deleted files */ })
+                        this.push(Path.resolve(this.dirToWatch, fileName));
                     }
                 }
             );

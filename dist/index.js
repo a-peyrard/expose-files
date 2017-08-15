@@ -12,6 +12,8 @@ const MailNotifier_1 = require("./notification/mail/MailNotifier");
 const Fs = require("fs");
 const Error_1 = require("./util/Error");
 const Debouncer_1 = require("./util/Debouncer");
+const Files_1 = require("./util/Files");
+const StreamPromiseFilter_1 = require("./util/StreamPromiseFilter");
 const OUT = process.stdout;
 program
     .version("0.0.1")
@@ -63,6 +65,7 @@ staticFileServer
     OUT.write(`👓  watching ${pathToWatch}\n`);
     watcher(pathToWatch, computedOptions.filter)
         .pipe(Debouncer_1.default.seconds(computedOptions.debounced || 30), { end: false })
+        .pipe(StreamPromiseFilter_1.default.filter(Files_1.isFile))
         .pipe(server);
     OUT.write(`💻  server started on ${server.address} in ${elapsedTimeSince(start)}ms\n`);
 });

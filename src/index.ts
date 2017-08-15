@@ -11,6 +11,9 @@ import { MailNewFileNotifier } from "./notification/mail/MailNotifier";
 import * as Fs from "fs";
 import { isNoFileFound } from "./util/Error";
 import Debouncer from "./util/Debouncer";
+import { isFile } from "./util/Files";
+import StreamPromiseFilter from "./util/StreamPromiseFilter";
+import { fileExists } from "ts-node/dist";
 
 const OUT = process.stdout;
 
@@ -109,6 +112,7 @@ staticFileServer
         OUT.write(`👓  watching ${pathToWatch}\n`);
         watcher(pathToWatch, computedOptions.filter)
             .pipe(Debouncer.seconds(computedOptions.debounced || 30), { end: false })
+            .pipe(StreamPromiseFilter.filter(isFile))
             .pipe(server);
         OUT.write(
             `💻  server started on ${server.address} in ${elapsedTimeSince(start)}ms\n`
